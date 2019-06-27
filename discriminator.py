@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
 
+from modules import Conv2dSelfAttention
 from modules import Interpolation
 
 class DiscriminatorBlock(nn.Module):
@@ -11,10 +12,10 @@ class DiscriminatorBlock(nn.Module):
 
         # NOTE residual function
         residual_function = [
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size=3,
                                     stride=1, padding=1)),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             spectral_norm(nn.Conv2d(out_channels, out_channels, kernel_size=3,
                                     stride=1, padding=1))
         ]
@@ -47,9 +48,6 @@ class DiscriminatorBlock(nn.Module):
         residual = self.residual_function(x)
         return identity + residual
 
-
-
-        
 class DiscriminatorOptimizedBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DiscriminatorOptimizedBlock, self).__init__()
@@ -57,7 +55,7 @@ class DiscriminatorOptimizedBlock(nn.Module):
         self.residual_function = nn.Sequential(
             spectral_norm(nn.Conv2d(in_channels, out_channels,
                                     kernel_size=3, stride=1, padding=1)),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             spectral_norm(nn.Conv2d(out_channels, out_channels,
                                     kernel_size=3, stride=1, padding=1)),
             Interpolation(scale_factor=0.5))
@@ -84,7 +82,7 @@ class Discriminator(nn.Module):
     def __init__(self, in_channels, num_classes):
         super(Discriminator, self).__init__()
             # FIXME fix name
-        ddim = 1
+        ddim = 64
 
         self.stem = nn.Sequential(
             DiscriminatorOptimizedBlock(in_channels, ddim),
@@ -94,7 +92,7 @@ class Discriminator(nn.Module):
             DiscriminatorBlock(4 * ddim, 8 * ddim),
             DiscriminatorBlock(8 * ddim, 16 * ddim),
             DiscriminatorBlock(16 * ddim, 16 * ddim, downsample=False),
-            nn.ReLU(inplace=True))
+            nn.ReLU())
 
         self.linear = spectral_norm(nn.Linear(
             in_features=16 * ddim, out_features=1))
@@ -113,5 +111,6 @@ class Discriminator(nn.Module):
         # TODO implement projection
         # https://arxiv.org/pdf/1802.05637.pdf
         h_labels = self.embedding(target)
-        projection = h_labels.mul(out).sum(dim=1)
+        # projection = h_labels.mul(out).sum(dim=1)
+        projection = torch.mul(h_labels, out).sum(dim=1)
         return logits + projection

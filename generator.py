@@ -52,7 +52,7 @@ class Generator(nn.Module):
                  out_channels=3):
         super(Generator, self).__init__()
         # FIXME rename and move them to argmuent
-        unit = 16
+        unit = 64
         self.chw = (unit * 16, 4, 4)
 
         self.linear = spectral_norm(nn.Linear(
@@ -66,7 +66,6 @@ class Generator(nn.Module):
 
         self.local_block_4 = LocalBlock(unit * 4, unit * 2, num_classes)
         self.local_block_5 = LocalBlock(unit * 2, unit, num_classes)
-
 
         self.top = nn.Sequential(
             nn.BatchNorm2d(unit),
@@ -94,4 +93,3 @@ class Generator(nn.Module):
         x = self.local_block_5(x, y)
 
         return self.top(x)
-        
