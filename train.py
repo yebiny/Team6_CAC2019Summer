@@ -76,7 +76,7 @@ def sample_image(generator,
                  num_samples,
                  device):
 
-    directory = root.joinpath('epoch-{:0>4d}')
+    directory = root.joinpath('epoch-{:0>4d}'.format(epoch))
     directory.mkdir()
 
     for yi in range(num_classes):
