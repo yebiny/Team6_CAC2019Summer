@@ -102,6 +102,8 @@ class Discriminator(nn.Module):
             self.embedding = spectral_norm(nn.Embedding(
                 num_classes, 16 * ddim))
 
+        self.in_channels = in_channels
+        self.num_classes = num_classes
 
     def forward(self, image, target):
         out = self.stem(image)
@@ -109,4 +111,7 @@ class Discriminator(nn.Module):
         logits = self.linear(out)
 
         # TODO implement projection
-        
+        # https://arxiv.org/pdf/1802.05637.pdf
+        h_labels = self.embedding(target)
+        projection = h_labels.mul(out).sum(dim=1)
+        return logits + projection
