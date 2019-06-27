@@ -51,6 +51,7 @@ class Generator(nn.Module):
                  num_classes,
                  out_channels=3):
         super(Generator, self).__init__()
+        # FIXME rename and move them to argmuent
         unit = 16
         self.chw = (unit * 16, 4, 4)
 
@@ -77,6 +78,11 @@ class Generator(nn.Module):
 
 
     def forward(self, x, y):
+        '''
+        Arguments:
+          x: latent vector
+          y: label
+        '''
         x = self.linear(x)
         x = x.view(-1, *self.chw)
 

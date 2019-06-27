@@ -83,6 +83,7 @@ class Discriminator(nn.Module):
     '''
     def __init__(self, in_channels, num_classes):
         super(Discriminator, self).__init__()
+            # FIXME fix name
             ddim = 1
 
             self.stem = nn.Sequential(
@@ -107,5 +108,5 @@ class Discriminator(nn.Module):
         out = out.sum(dim=(2, 3)).squeeze()
         logits = self.linear(out)
 
-        # projection
+        # TODO implement projection
         
