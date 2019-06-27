@@ -8,9 +8,9 @@ def get_dataset_root():
     if hostname == 'gate2.sscc.uos.ac.kr':
         root = '/scratch/seyang/kias-cac/cat/'
     elif hostname == 'dgx':
-        raise NotImplementedError
+        root = '/scratch/seyang/cat'
     else:
-        raise ValueError
+        raise NotImplementedError
     return root
 
 
