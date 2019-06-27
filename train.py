@@ -84,12 +84,12 @@ def sample_image(generator,
         image_path = str(directory.joinpath('image-{}.png'.format(yi)))
 
         z = torch.randn(num_samples, dim_latent, device=device)
-        y = yi * torch.ones(num_samples, device=device)
+        y = yi * torch.ones(num_samples, dtype=torch.long, device=device)
         x_fake = generator(z, y)
 
         x_fake = 0.5 * x_fake + 0.5
 
-        save_image(x_fake, image_path, nrows=4)
+        save_image(x_fake, image_path, nrow=4)
 
         x_fake = x_fake.detach().cpu().numpy()
         np.savez(npz_path)
@@ -98,7 +98,7 @@ def sample_image(generator,
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch-size', default=64, type=int)
+    parser.add_argument('--batch-size', default=128, type=int)
     parser.add_argument('--num-workers', default=1, type=int)
     parser.add_argument('--num-epochs', default=5, type=int)
     parser.add_argument('--dim-latent', default=128, type=int)
@@ -161,7 +161,7 @@ def main():
                                          betas=(0, 0.9))
 
     enter_discriminator_phase(generator, discriminator, discriminator_optimizer)
-    for epoch in range(args.num_epochs):
+    for epoch in range(1, args.num_epochs + 1):
         print('[Epoch {:>3d} / {:>3d}]'.format(epoch, args.num_epochs))
         for batch_idx, (x, y) in enumerate(data_loader, 1):
             # NOTE Discriminator training phase
