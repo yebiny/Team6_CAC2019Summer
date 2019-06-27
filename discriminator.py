@@ -84,23 +84,23 @@ class Discriminator(nn.Module):
     def __init__(self, in_channels, num_classes):
         super(Discriminator, self).__init__()
             # FIXME fix name
-            ddim = 1
+        ddim = 1
 
-            self.stem = nn.Sequential(
-                DiscriminatorOptimizedBlock(in_channels, ddim),
-                DiscriminatorBlock(ddim, 2 * ddim),
-                Conv2dSelfAttention(2 * ddim),
-                DiscriminatorBlock(2 * ddim, 4 * ddim),
-                DiscriminatorBlock(4 * ddim, 8 * ddim),
-                DiscriminatorBlock(8 * ddim, 16 * ddim),
-                DiscriminatorBlock(16 * ddim, 16 * ddim, downsample=False),
-                nn.ReLU(inplace=True))
+        self.stem = nn.Sequential(
+            DiscriminatorOptimizedBlock(in_channels, ddim),
+            DiscriminatorBlock(ddim, 2 * ddim),
+            Conv2dSelfAttention(2 * ddim),
+            DiscriminatorBlock(2 * ddim, 4 * ddim),
+            DiscriminatorBlock(4 * ddim, 8 * ddim),
+            DiscriminatorBlock(8 * ddim, 16 * ddim),
+            DiscriminatorBlock(16 * ddim, 16 * ddim, downsample=False),
+            nn.ReLU(inplace=True))
 
-            self.linear = spectral_norm(nn.Linear(
-                in_features=16 * ddim, out_features=1))
+        self.linear = spectral_norm(nn.Linear(
+            in_features=16 * ddim, out_features=1))
 
-            self.embedding = spectral_norm(nn.Embedding(
-                num_classes, 16 * ddim))
+        self.embedding = spectral_norm(nn.Embedding(
+            num_classes, 16 * ddim))
 
         self.in_channels = in_channels
         self.num_classes = num_classes
