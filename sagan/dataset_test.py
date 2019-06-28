@@ -14,10 +14,11 @@ def test_dataset():
 
     for batch_idx, (image, target) in enumerate(data_loader):
         print(image.shape, target.shape)
-        if batch_idx == 10:
+        if batch_idx == 1:
             break
 
     print(target)
+    print(image[0])
 
 def main():
     test_dataset()

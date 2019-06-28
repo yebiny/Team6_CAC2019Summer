@@ -75,24 +75,45 @@ def sample_image(generator,
                  root,
                  num_samples,
                  device):
+    generator.eval()
+    with torch.no_grad():
+        for yi in range(num_classes):
+            npz_path = str(root.joinpath('epoch-{:0>4d}_sample-{}.npz'.format(epoch, yi)))
+            image_path = str(root.joinpath('epoch-{:0>4d}_image-{}.png'.format(epoch, yi)))
 
-    directory = root.joinpath('epoch-{:0>4d}'.format(epoch))
-    directory.mkdir()
+            z = torch.randn(num_samples, dim_latent, device=device)
+            y = yi * torch.ones(num_samples, dtype=torch.long, device=device)
+            x_fake = generator(z, y)
 
-    for yi in range(num_classes):
-        npz_path = str(directory.joinpath('sample-{}.npz'.format(yi)))
-        image_path = str(directory.joinpath('image-{}.png'.format(yi)))
+            x_fake = 0.5 * x_fake + 0.5
 
-        z = torch.randn(num_samples, dim_latent, device=device)
-        y = yi * torch.ones(num_samples, dtype=torch.long, device=device)
-        x_fake = generator(z, y)
+            save_image(x_fake, image_path, nrow=4)
 
-        x_fake = 0.5 * x_fake + 0.5
+            x_fake = x_fake.detach().cpu().numpy()
+            np.savez(npz_path)
 
-        save_image(x_fake, image_path, nrow=4)
 
-        x_fake = x_fake.detach().cpu().numpy()
-        np.savez(npz_path)
+class InstanceNoise(object):
+    def __init__(self, batch_shape, initial_std, total_steps, device):
+        self.mean = torch.full(batch_shape, 0, device=device)
+        self.std = torch.full(batch_shape, initial_std, device=device)
+
+        self.batch_shape = batch_shape
+        self.initial_std = initial_std
+        self.total_steps = total_steps
+        self.device = device
+
+    def step(self, step):
+        if step < self.total_steps:
+            std = (1 - step / self.total_steps) * self.initial_std
+            self.std.fill_(std)
+        else:
+            self.std.fill_(0)
+
+    def sample(self):
+        return torch.normal(mean=self.mean, std=self.std).to(self.device)
+
+
 
 
 
@@ -104,10 +125,10 @@ def main():
     parser.add_argument('--dim-latent', default=128, type=int)
     parser.add_argument('--generator-lr', default=0.0001, type=float)
     parser.add_argument('--discriminator-lr', default=0.0002, type=float)
-    parser.add_argument('--discriminator-update-freq', default=3, type=int)
+    parser.add_argument('--discriminator-update-freq', default=5, type=int)
     parser.add_argument('--num-channels', default=3, type=int)
     parser.add_argument('--num-classes', default=5, type=int)
-    parser.add_argument('--seed', default=12509, type=int)
+    parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--num-samples', default=16, type=int)
 
     default_name = 'sagan_{}_{}'.format(
@@ -127,13 +148,13 @@ def main():
     sample_dir = out_dir.joinpath('sample')
     sample_dir.mkdir()
 
-    torch.autograd.set_detect_anomaly(True)
+    # torch.autograd.set_detect_anomaly(True)
     # NOTE for reporducibility
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     dataset = get_dataset(get_dataset_root())
     data_loader = DataLoader(dataset=dataset, batch_size=args.batch_size,
@@ -156,26 +177,42 @@ def main():
                                      lr=args.generator_lr,
                                      betas=(0, 0.9))
 
-    discriminator_optimizer = optim.Adam(discriminator.parameters(),
-                                         lr=args.discriminator_lr,
-                                         betas=(0, 0.9))
+    discriminator_optimizer = optim.SGD(discriminator.parameters(),
+                                        lr=args.discriminator_lr)
 
-    enter_discriminator_phase(generator, discriminator, discriminator_optimizer)
+
+    # https://www.inference.vc/instance-noise-a-trick-for-stabilising-gan-training/
+    instance_noise = InstanceNoise(
+        batch_shape=(args.batch_size, 3, 128, 128),
+        initial_std=0.01,
+        total_steps=10 * len(data_loader),
+        device=device)
+
+    # enter_discriminator_phase(generator, discriminator, discriminator_optimizer)
+    step = 0
     for epoch in range(1, args.num_epochs + 1):
         print('[Epoch {:>3d} / {:>3d}]'.format(epoch, args.num_epochs))
+
         for batch_idx, (x, y) in enumerate(data_loader, 1):
             # NOTE Discriminator training phase
             x = x.to(device)
             y = y.to(device)
 
-            if batch_idx % args.discriminator_update_freq == 1:
-                enter_discriminator_phase(generator, discriminator,
-                                          discriminator_optimizer)
+            step += 1
+            instance_noise.step(step)
+
+            # if batch_idx % args.discriminator_update_freq == 1:
+            enter_discriminator_phase(generator, discriminator,
+                                      discriminator_optimizer)
 
             # input noise = latent vcector
             z = torch.randn(args.batch_size, args.dim_latent, device=device)
             # fake image = x sampled from generator
             x_fake = generator(z, y)
+
+            if step < instance_noise.total_steps:
+                x = x + instance_noise.sample()
+                x_fake = x_fake + instance_noise.sample()
 
             y_hat_real = discriminator(x, y)
             y_hat_fake = discriminator(x_fake.detach(), y)
@@ -197,6 +234,10 @@ def main():
 
                 # x sampled from model
                 x_fake = generator(z, y)
+
+                if step < instance_noise.total_steps:
+                    x_fake = x_fake + instance_noise.sample()
+
                 y_hat_fake = discriminator(x_fake, y)
 
                 loss_g = generator_loss(y_hat_fake)

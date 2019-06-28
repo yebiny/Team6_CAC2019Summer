@@ -82,7 +82,7 @@ class Discriminator(nn.Module):
     def __init__(self, in_channels, num_classes):
         super(Discriminator, self).__init__()
             # FIXME fix name
-        ddim = 64
+        ddim = 32
 
         self.stem = nn.Sequential(
             DiscriminatorOptimizedBlock(in_channels, ddim),

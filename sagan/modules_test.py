@@ -4,9 +4,11 @@ from modules import Conv2dSelfAttention
 from modules import CondBatchNorm2d
 
 def test_conv2d_self_attention():
-    x = torch.zeros((64, 32, 8, 8)).cuda()
+    in_channels = 64
+
+    x = torch.zeros((5, in_channels, 6, 6)).cuda()
     print(x.shape)
-    attention = Conv2dSelfAttention(in_channels=32).cuda()
+    attention = Conv2dSelfAttention(in_channels=in_channels).cuda()
     print(attention)
     x = attention(x)
     print(x.shape)
