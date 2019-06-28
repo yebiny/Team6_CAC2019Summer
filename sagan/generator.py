@@ -10,9 +10,9 @@ from modules import CondBatchNorm2d
 
 
 
-class LocalBlock(nn.Module):
+class GeneratorBlock(nn.Module):
     def __init__(self, in_channels, out_channels, num_classes):
-        super(LocalBlock, self).__init__()
+        super(GeneratorBlock, self).__init__()
 
         self.bn0 = CondBatchNorm2d(in_channels, num_classes)
         self.bn1 = CondBatchNorm2d(out_channels, num_classes)
@@ -30,16 +30,17 @@ class LocalBlock(nn.Module):
             kernel_size=1, stride=1, padding=0))
 
     def forward(self, x, y):
+        # residual function
         h = self.bn0(x, y)
-        h = F.relu(h)
-        h = F.interpolate(h, scale_factor=2, mode='nearest')
+        h = F.leaky_relu(h, 0.2)
+        h = F.interpolate(h, scale_factor=2)
         h = self.conv0(h)
         h = self.bn1(h, y)
-        h = F.relu(h)
+        h = F.leaky_relu(h, 0.2)
         h = self.conv1(h)
 
         # identity mapping
-        identity = F.interpolate(x, scale_factor=2, mode='nearest')
+        identity = F.interpolate(x, scale_factor=2)
         identity = self.conv2(identity)
         
         return h + identity
@@ -58,21 +59,19 @@ class Generator(nn.Module):
         self.linear = spectral_norm(nn.Linear(
             in_features=dim_latent, out_features=np.prod(self.chw)))
 
-        self.local_block_1 = LocalBlock(unit * 16, unit * 16, num_classes)
-        self.local_block_2 = LocalBlock(unit * 16, unit * 8, num_classes)
+        self.local_block_1 = GeneratorBlock(unit * 16, unit * 16, num_classes)
+        self.local_block_2 = GeneratorBlock(unit * 16, unit * 8, num_classes)
 
-        self.local_block_3 = LocalBlock(unit * 8, unit * 4, num_classes)
+        self.local_block_3 = GeneratorBlock(unit * 8, unit * 4, num_classes)
         self.global_block = Conv2dSelfAttention(unit * 4)
 
-        self.local_block_4 = LocalBlock(unit * 4, unit * 2, num_classes)
-        self.local_block_5 = LocalBlock(unit * 2, unit, num_classes)
+        self.local_block_4 = GeneratorBlock(unit * 4, unit * 2, num_classes)
+        self.local_block_5 = GeneratorBlock(unit * 2, unit, num_classes)
 
         self.top = nn.Sequential(
             nn.BatchNorm2d(unit),
-            nn.ReLU(inplace=True),
-            spectral_norm(nn.Conv2d(
-                unit, out_channels,
-                kernel_size=3, stride=1, padding=1)),
+            nn.LeakyReLU(0.2),
+            spectral_norm(nn.Conv2d(unit, out_channels, kernel_size=3, stride=1, padding=1)),
             nn.Tanh())
 
 

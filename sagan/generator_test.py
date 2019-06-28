@@ -1,6 +1,6 @@
 import torch
 
-from generator import LocalBlock
+from generator import GeneratorBlock
 from generator import Generator
 
 BATCH_SIZE = 16
@@ -22,7 +22,7 @@ def test_local_block():
     x = torch.randn(batch_size, in_channels, 8, 8, device=device)
     y = torch.randint(low=0, high=num_classes, size=(batch_size, ), device=device)
 
-    block = LocalBlock(in_channels=in_channels, out_channels=out_channels,
+    block = GeneratorBlock(in_channels=in_channels, out_channels=out_channels,
                        num_classes=num_classes).to(device)
 
     print(block)

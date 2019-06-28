@@ -15,7 +15,7 @@ def get_dataset_root():
 
 
 def get_dataset(root,
-                size=(64, 64),
+                size=(128, 128),
                 mean=(0.5, 0.5, 0.5),
                 std=(0.5, 0.5, 0.5)):
     transform = transforms.Compose([
